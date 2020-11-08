@@ -6,7 +6,7 @@ namespace System.Data.SQLite
 {
     public class SQLiteTable
     {
-        public string TableName = "";
+        public string Name = "";
         public SQLiteColumnList Columns = new SQLiteColumnList();
 
         public SQLiteTable()
@@ -14,7 +14,7 @@ namespace System.Data.SQLite
 
         public SQLiteTable(string name)
         {
-            TableName = name;
+            Name = name;
         }
     }
 }

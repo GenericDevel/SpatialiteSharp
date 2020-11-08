@@ -1,7 +1,10 @@
-﻿// Version 1.2
-// Date: 2014-03-27
-// http://sh.codeplex.com
-// Dedicated to Public Domain
+﻿//////////////////////////////////////////////////
+/// 文件：SQLiteHelper.cs
+/// 说明：SQLite管理助手
+/// 
+/// 时间：2020/11/8/
+/// 来源：http://sh.codeplex.com
+/////////////////////////////////////////////////
 
 using System;
 using System.Collections.Generic;
@@ -11,7 +14,10 @@ using System.Globalization;
 
 namespace System.Data.SQLite
 {
-    public enum ColType
+    /// <summary>
+    /// 字段类型
+    /// </summary>
+    public enum FieldType
     {
         Text,
         DateTime,
@@ -20,27 +26,156 @@ namespace System.Data.SQLite
         BLOB
     }
 
+    /// <summary>
+    /// SQLite管理助手
+    /// </summary>
     public class SQLiteHelper
     {
-        SQLiteCommand cmd = null;
+        #region 实例及构造函数
+        static SQLiteHelper instance;
 
+        /// <summary>
+        /// 实例
+        /// </summary>
+        public static SQLiteHelper Instance
+        {
+            get
+            {
+                if (instance == null)
+                    instance = new SQLiteHelper();
+
+                return instance;
+            }
+        }
+
+
+        public SQLiteHelper() { }
+
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="command"></param>
         public SQLiteHelper(SQLiteCommand command)
         {
             cmd = command;
         }
 
+        #endregion
+
+        #region 私有变量及属性
+        private SQLiteCommand cmd = null;
+        private SQLiteConnection conn;
+
+        /// <summary>
+        /// SQLite Command
+        /// </summary>
+        public SQLiteCommand Command { get => cmd; set => cmd = value; }
+
+        /// <summary>
+        /// SQLite Connection
+        /// </summary>
+        public SQLiteConnection Connection { get => conn; set => conn = value; }
+        #endregion
+
+        #region 连接管理
+        /// <summary>
+        /// 打开连接
+        /// </summary>
+        /// <param name="databasePath">数据库文件路径</param>
+        /// <returns></returns>
+        /// <remarks>如果文件不存在则创建数据库</remarks>
+        public bool Open(string databasePath)
+        {
+            try
+            {
+                string dataSource = string.Format("data source={0};Pooling=true;FailIfMissing=false", databasePath);
+                this.conn = new SQLiteConnection(dataSource);
+                conn.Open();
+
+                this.cmd = new SQLiteCommand();                  
+                cmd.Connection = conn;
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// 加载空间数据模块
+        /// </summary>
+        /// <param name="modPath">模块文件路径</param>
+        /// <remarks>如果模块库文件与可执行文件在同一目录下，可以不带路径名称，如:mod_spatialite.dll</remarks>
+        public void LoadSpatialMod(string modPath="mod_spatialite.dll")
+        {
+            try
+            {
+                this.conn.LoadExtension(modPath);               
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// 初始化空间参数
+        /// </summary>
+        /// <remarks>初始创建空间数据库时，必须执行初始化操作</remarks>
+        public void InitSpatialMeta()
+        {
+            try
+            {
+                //
+                string sql = "select InitSpatialMetaData()";
+                cmd.CommandText = sql;
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// 关闭
+        /// </summary>
+        public void Close()
+        {
+            try
+            {
+                conn.Close();
+            }
+            catch (Exception ex)
+            { 
+            }
+        }
+        #endregion
+
         #region DB Info
 
+        /// <summary>
+        /// 获取数据表状态
+        /// </summary>
+        /// <returns>DataTable</returns>
+        /// <remarks>字段包括：type,name,tbl_name,rootpage,sql</remarks>
         public DataTable GetTableStatus()
         {
             return Select("SELECT * FROM sqlite_master;");
         }
 
+        /// <summary>
+        /// 获取数据表列表
+        /// </summary>
+        /// <returns>DataTable</returns>
+        /// <remarks>字段包括：tablename</remarks>
         public DataTable GetTableList()
         {
             DataTable dt = GetTableStatus();
             DataTable dt2 = new DataTable();
-            dt2.Columns.Add("Tables");
+            dt2.Columns.Add("tablename");
             for (int i = 0; i < dt.Rows.Count; i++)
             {
                 string t = dt.Rows[i]["name"] + "";
@@ -50,11 +185,22 @@ namespace System.Data.SQLite
             return dt2;
         }
 
+        /// <summary>
+        /// 获取数据表字段状态
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <returns>DataTable</returns>
+        /// <remarks>字段包括：cid,name,notnull,dflt_value,pk</remarks>
         public DataTable GetColumnStatus(string tableName)
         {
             return Select(string.Format("PRAGMA table_info(`{0}`);", tableName));
         }
 
+        /// <summary>
+        /// 显示数据库信息
+        /// </summary>
+        /// <returns>DataTable</returns>
+        /// <remarks>字段包括：seq,name,file</remarks>
         public DataTable ShowDatabase()
         {
             return Select("PRAGMA database_list;");
@@ -62,37 +208,67 @@ namespace System.Data.SQLite
 
         #endregion
 
-        #region Query
+        #region 数据查询
 
+        /// <summary>
+        /// 开始事务
+        /// </summary>
         public void BeginTransaction()
         {
             cmd.CommandText = "begin transaction;";
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// 提交
+        /// </summary>
         public void Commit()
         {
             cmd.CommandText = "commit;";
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// 回滚
+        /// </summary>
         public void Rollback()
         {
             cmd.CommandText = "rollback";
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// 查询SQL
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <returns></returns>
         public DataTable Select(string sql)
         {
             return Select(sql, new List<SQLiteParameter>());
         }
 
+        /// <summary>
+        /// 带参数查询
+        /// </summary>
+        /// <param name="sql">SQL语句</param>
+        /// <param name="dicParameters">参数列表</param>
+        /// <returns>DataTable</returns>
+        /// <remarks>示例：
+        /// 
+        /// 
+        /// </remarks>
         public DataTable Select(string sql, Dictionary<string, object> dicParameters = null)
         {
             List<SQLiteParameter> lst = GetParametersList(dicParameters);
             return Select(sql, lst);
         }
 
+        /// <summary>
+        /// 带参数查询
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="parameters"></param>
+        /// <returns></returns>
         public DataTable Select(string sql, IEnumerable<SQLiteParameter> parameters = null)
         {
             cmd.CommandText = sql;
@@ -109,17 +285,31 @@ namespace System.Data.SQLite
             return dt;
         }
 
+        /// <summary>
+        /// 执行SQL
+        /// </summary>
+        /// <param name="sql"></param>
         public void Execute(string sql)
         {
             Execute(sql, new List<SQLiteParameter>());
         }
 
+        /// <summary>
+        /// 执行带参数SQL
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="dicParameters"></param>
         public void Execute(string sql, Dictionary<string, object> dicParameters = null)
         {
             List<SQLiteParameter> lst = GetParametersList(dicParameters);
             Execute(sql, lst);
         }
 
+        /// <summary>
+        /// 执行带参数SQL
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="parameters"></param>
         public void Execute(string sql, IEnumerable<SQLiteParameter> parameters = null)
         {
             cmd.CommandText = sql;
@@ -133,18 +323,35 @@ namespace System.Data.SQLite
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// 执行SQL
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <returns></returns>
         public object ExecuteScalar(string sql)
         {
             cmd.CommandText = sql;
             return cmd.ExecuteScalar();
         }
 
+        /// <summary>
+        /// 执行带参数SQL
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="dicParameters"></param>
+        /// <returns></returns>
         public object ExecuteScalar(string sql, Dictionary<string, object> dicParameters = null)
         {
             List<SQLiteParameter> lst = GetParametersList(dicParameters);
             return ExecuteScalar(sql, lst);
         }
 
+        /// <summary>
+        /// 执行带参数SQL
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="parameters"></param>
+        /// <returns></returns>
         public object ExecuteScalar(string sql, IEnumerable<SQLiteParameter> parameters = null)
         {
             cmd.CommandText = sql;
@@ -211,6 +418,11 @@ namespace System.Data.SQLite
             return data;
         }
 
+        /// <summary>
+        /// 插入数据
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <param name="dic"></param>
         public void Insert(string tableName, Dictionary<string, object> dic)
         {
             StringBuilder sbCol = new System.Text.StringBuilder();
@@ -259,6 +471,24 @@ namespace System.Data.SQLite
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// 插入数据
+        /// </summary>
+        /// <param name="sql">要插入的SQL语句</param>
+        /// <param name="dic"></param>
+        public void Insert(string sql)
+        {          
+            cmd.CommandText =sql;
+            cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>
+        /// 修改
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <param name="dicData"></param>
+        /// <param name="colCond"></param>
+        /// <param name="varCond"></param>
         public void Update(string tableName, Dictionary<string, object> dicData, string colCond, object varCond)
         {
             Dictionary<string, object> dic = new Dictionary<string, object>();
@@ -266,6 +496,12 @@ namespace System.Data.SQLite
             Update(tableName, dicData, dic);
         }
 
+        /// <summary>
+        /// 修改
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <param name="dicData"></param>
+        /// <param name="dicCond"></param>
         public void Update(string tableName, Dictionary<string, object> dicData, Dictionary<string, object> dicCond)
         {
             if (dicData.Count == 0)
@@ -345,6 +581,10 @@ namespace System.Data.SQLite
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// 获取最后插入的ID
+        /// </summary>
+        /// <returns></returns>
         public long LastInsertRowId()
         {
             return ExecuteScalar<long>("select last_insert_rowid();");
@@ -352,20 +592,31 @@ namespace System.Data.SQLite
 
         #endregion
 
-        #region Utilities
+        #region 数据表操作
 
+        /// <summary>
+        /// 创建数据表
+        /// </summary>
+        /// <param name="table"></param>
+        /// <remarks>示例：
+        /// SQLiteTable tb = new SQLiteTable(tableName);
+        /// SQLiteColumn field = new SQLiteColumn();
+        /// field.ColumnName = colName;
+        /// field.ColDataType = ColType.Text;
+        /// tb.Columns.Add(field);
+        /// </remarks>
         public void CreateTable(SQLiteTable table)
         {
             StringBuilder sb = new Text.StringBuilder();
             sb.Append("create table if not exists `");
-            sb.Append(table.TableName);
+            sb.Append(table.Name);
             sb.AppendLine("`(");
 
             bool firstRecord = true;
 
             foreach (SQLiteColumn col in table.Columns)
             {
-                if (col.ColumnName.Trim().Length == 0)
+                if (col.Name.Trim().Length == 0)
                 {
                     throw new Exception("Column name cannot be blank.");
                 }
@@ -375,27 +626,26 @@ namespace System.Data.SQLite
                 else
                     sb.AppendLine(",");
 
-                sb.Append(col.ColumnName);
+                sb.Append(col.Name);
                 sb.Append(" ");
 
                 if (col.AutoIncrement)
                 {
-
                     sb.Append("integer primary key autoincrement");
                     continue;
                 }
 
-                switch (col.ColDataType)
+                switch (col.DataType)
                 {
-                    case ColType.Text:
+                    case FieldType.Text:
                         sb.Append("text"); break;
-                    case ColType.Integer:
+                    case FieldType.Integer:
                         sb.Append("integer"); break;
-                    case ColType.Decimal:
+                    case FieldType.Decimal:
                         sb.Append("decimal"); break;
-                    case ColType.DateTime:
+                    case FieldType.DateTime:
                         sb.Append("datetime"); break;
-                    case ColType.BLOB:
+                    case FieldType.BLOB:
                         sb.Append("blob"); break;
                 }
 
@@ -407,7 +657,7 @@ namespace System.Data.SQLite
                 {
                     sb.Append(" default ");
 
-                    if (col.DefaultValue.Contains(" ") || col.ColDataType == ColType.Text || col.ColDataType == ColType.DateTime)
+                    if (col.DefaultValue.Contains(" ") || col.DataType == FieldType.Text || col.DataType == FieldType.DateTime)
                     {
                         sb.Append("'");
                         sb.Append(col.DefaultValue);
@@ -426,12 +676,22 @@ namespace System.Data.SQLite
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// 修改表名
+        /// </summary>
+        /// <param name="tableFrom"></param>
+        /// <param name="tableTo"></param>
         public void RenameTable(string tableFrom, string tableTo)
         {
             cmd.CommandText = string.Format("alter table `{0}` rename to `{1}`;", tableFrom, tableTo);
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// 复制表记录
+        /// </summary>
+        /// <param name="tableFrom"></param>
+        /// <param name="tableTo"></param>
         public void CopyAllData(string tableFrom, string tableTo)
         {
             DataTable dt1 = Select(string.Format("select * from `{0}` where 1 = 2;", tableFrom));
@@ -488,24 +748,34 @@ namespace System.Data.SQLite
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// 删除表
+        /// </summary>
+        /// <param name="table"></param>
         public void DropTable(string table)
         {
             cmd.CommandText = string.Format("drop table if exists `{0}`", table);
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// 修改表结构
+        /// </summary>
+        /// <param name="targetTable"></param>
+        /// <param name="newStructure"></param>
         public void UpdateTableStructure(string targetTable, SQLiteTable newStructure)
         {
-            newStructure.TableName = targetTable + "_temp";
+            newStructure.Name = targetTable + "_temp";
 
             CreateTable(newStructure);
 
-            CopyAllData(targetTable, newStructure.TableName);
+            CopyAllData(targetTable, newStructure.Name);
 
             DropTable(targetTable);
 
-            RenameTable(newStructure.TableName, targetTable);
+            RenameTable(newStructure.Name, targetTable);
         }
+
 
         public void AttachDatabase(string database, string alias)
         {

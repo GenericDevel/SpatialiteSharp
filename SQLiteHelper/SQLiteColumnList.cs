@@ -13,7 +13,7 @@ namespace System.Data.SQLite
         {
             for (int i = 0; i < _lst.Count; i++)
             {
-                if (_lst[i].ColumnName == colName)
+                if (_lst[i].Name == colName)
                     throw new Exception("Column name of \"" + colName + "\" is already existed.");
             }
         }
@@ -25,7 +25,7 @@ namespace System.Data.SQLite
 
         public void Insert(int index, SQLiteColumn item)
         {
-            CheckColumnName(item.ColumnName);
+            CheckColumnName(item.Name);
 
             _lst.Insert(index, item);
         }
@@ -43,9 +43,9 @@ namespace System.Data.SQLite
             }
             set
             {
-                if (_lst[index].ColumnName != value.ColumnName)
+                if (_lst[index].Name != value.Name)
                 {
-                    CheckColumnName(value.ColumnName);
+                    CheckColumnName(value.Name);
                 }
 
                 _lst[index] = value;
@@ -54,7 +54,7 @@ namespace System.Data.SQLite
 
         public void Add(SQLiteColumn item)
         {
-            CheckColumnName(item.ColumnName);
+            CheckColumnName(item.Name);
 
             _lst.Add(item);
         }

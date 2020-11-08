@@ -6,9 +6,9 @@ namespace System.Data.SQLite
 {
     public class SQLiteColumn
     {
-        public string ColumnName = "";
+        public string Name = "";
         public bool PrimaryKey = false;
-        public ColType ColDataType = ColType.Text;
+        public FieldType DataType = FieldType.Text;
         public bool AutoIncrement = false;
         public bool NotNull = false;
         public string DefaultValue = "";
@@ -18,52 +18,52 @@ namespace System.Data.SQLite
 
         public SQLiteColumn(string colName)
         {
-            ColumnName = colName;
+            Name = colName;
             PrimaryKey = false;
-            ColDataType = ColType.Text;
+            DataType = FieldType.Text;
             AutoIncrement = false;
         }
 
-        public SQLiteColumn(string colName, ColType colDataType)
+        public SQLiteColumn(string colName, FieldType colDataType)
         {
-            ColumnName = colName;
+            Name = colName;
             PrimaryKey = false;
-            ColDataType = colDataType;
+            DataType = colDataType;
             AutoIncrement = false;
         }
 
         public SQLiteColumn(string colName, bool autoIncrement)
         {
-            ColumnName = colName;
+            Name = colName;
 
             if (autoIncrement)
             {
                 PrimaryKey = true;
-                ColDataType = ColType.Integer;
+                DataType = FieldType.Integer;
                 AutoIncrement = true;
             }
             else
             {
                 PrimaryKey = false;
-                ColDataType = ColType.Text;
+                DataType = FieldType.Text;
                 AutoIncrement = false;
             }
         }
 
-        public SQLiteColumn(string colName, ColType colDataType, bool primaryKey, bool autoIncrement, bool notNull, string defaultValue)
+        public SQLiteColumn(string colName, FieldType colDataType, bool primaryKey, bool autoIncrement, bool notNull, string defaultValue)
         {
-            ColumnName = colName;
+            Name = colName;
 
             if (autoIncrement)
             {
                 PrimaryKey = true;
-                ColDataType = ColType.Integer;
+                DataType = FieldType.Integer;
                 AutoIncrement = true;
             }
             else
             {
                 PrimaryKey = primaryKey;
-                ColDataType = colDataType;
+                DataType = colDataType;
                 AutoIncrement = false;
                 NotNull = notNull;
                 DefaultValue = defaultValue;
